@@ -1,0 +1,249 @@
+<!--
+    Product List Template
+    
+    This template renders the main product search and filter page.
+    It provides:
+        - A search bar for description-based text search
+        - A category dropdown for filtering by category
+        - Tag checkboxes for filtering by one or more tags
+        - A results table displaying matching products
+        - Pagination controls for navigating through results
+    
+    All filter values are preserved in the form via the context variables
+    (search_query, selected_category, selected_tags) so the user's
+    selections persist across page loads and pagination.
+    
+    The form uses GET method so filter states are bookmarkable/shareable via URL.
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Product Catalog — Search &amp; Filter</title>
+    <style>
+        /* 
+         * Minimal styling for readability and usability.
+         * The assignment states design is not important — this CSS
+         * simply ensures the page is clean and functional.
+         */
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 1100px; margin: 0 auto; padding: 20px; }
+        h1 { margin-bottom: 20px; color: #1a1a2e; }
+
+        /* Filter form container */
+        .filter-form { background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 6px; padding: 20px; margin-bottom: 24px; }
+        .filter-row { display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-start; margin-bottom: 12px; }
+        .filter-group { flex: 1; min-width: 200px; }
+        .filter-group label { display: block; font-weight: 600; margin-bottom: 4px; font-size: 0.9em; color: #555; }
+        .filter-group input[type="text"],
+        .filter-group select { width: 100%; padding: 8px 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 0.95em; }
+
+        /* Tag checkboxes */
+        .tags-container { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+        .tags-container label { display: flex; align-items: center; gap: 4px; font-weight: normal; font-size: 0.9em; background: #e9ecef; padding: 4px 10px; border-radius: 12px; cursor: pointer; }
+        .tags-container label:hover { background: #dee2e6; }
+        .tags-container input[type="checkbox"]:checked + span { font-weight: 600; }
+
+        /* Buttons */
+        .btn-row { display: flex; gap: 10px; margin-top: 8px; }
+        button, .btn-clear { padding: 8px 20px; border: none; border-radius: 4px; cursor: pointer; font-size: 0.95em; text-decoration: none; }
+        button[type="submit"] { background: #1a73e8; color: white; }
+        button[type="submit"]:hover { background: #1557b0; }
+        .btn-clear { background: #e9ecef; color: #333; }
+        .btn-clear:hover { background: #dee2e6; }
+
+        /* Results info */
+        .results-info { margin-bottom: 12px; color: #666; font-size: 0.9em; }
+
+        /* Product table */
+        table { width: 100%; border-collapse: collapse; }
+        th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid #dee2e6; }
+        th { background: #f1f3f5; font-weight: 600; font-size: 0.85em; text-transform: uppercase; color: #555; position: sticky; top: 0; }
+        tr:hover { background: #f8f9fa; }
+        td.description { max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .tag-badge { display: inline-block; background: #e3f2fd; color: #1565c0; padding: 2px 8px; border-radius: 10px; font-size: 0.8em; margin: 1px 2px; }
+
+        /* Pagination */
+        .pagination { display: flex; justify-content: center; gap: 6px; margin-top: 20px; }
+        .pagination a, .pagination span { padding: 6px 12px; border: 1px solid #dee2e6; border-radius: 4px; text-decoration: none; color: #333; font-size: 0.9em; }
+        .pagination a:hover { background: #e9ecef; }
+        .pagination .current { background: #1a73e8; color: white; border-color: #1a73e8; }
+
+        /* Empty state */
+        .empty-state { text-align: center; padding: 40px; color: #888; }
+    </style>
+</head>
+<body>
+    <h1>🔍 Product Catalog</h1>
+
+    <!-- 
+        Search & Filter Form
+        
+        Uses GET method so that:
+        1. Filter state is encoded in the URL (bookmarkable/shareable)
+        2. Browser back/forward navigation works naturally
+        3. Pagination links can include current filters via query params
+    -->
+    <form method="get" action="{% url 'products:product_list' %}" class="filter-form">
+        <div class="filter-row">
+            <!-- Description search input -->
+            <div class="filter-group">
+                <label for="search">Search by Description</label>
+                <input type="text"
+                       id="search"
+                       name="search"
+                       value="{{ search_query }}"
+                       placeholder="e.g. copper, insulation, heavy-duty...">
+            </div>
+
+            <!-- Category dropdown filter -->
+            <div class="filter-group">
+                <label for="category">Filter by Category</label>
+                <select id="category" name="category">
+                    <option value="">All Categories</option>
+                    {% for cat in categories %}
+                        <!--
+                            Compare category ID with selected_category to preserve
+                            the user's selection after form submission.
+                            We use the |stringformat:"d" filter to convert the int ID
+                            to a string for comparison with the GET parameter.
+                        -->
+                        <option value="{{ cat.id }}"
+                                {% if cat.id|stringformat:"d" == selected_category %}selected{% endif %}>
+                            {{ cat.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <!-- Tag checkboxes (multi-select with OR logic) -->
+        <div class="filter-group">
+            <label>Filter by Tags <span style="font-weight:normal; color:#888;">(select one or more)</span></label>
+            <div class="tags-container">
+                {% for tag in tags %}
+                    <label>
+                        <!--
+                            Multiple checkboxes share the name "tags", so Django's
+                            request.GET.getlist("tags") collects all selected values.
+                            Checked state is preserved by checking if the tag ID
+                            is in the selected_tags list.
+                        -->
+                        <input type="checkbox"
+                               name="tags"
+                               value="{{ tag.id }}"
+                               {% if tag.id|stringformat:"d" in selected_tags %}checked{% endif %}>
+                        <span>{{ tag.name }}</span>
+                    </label>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Form action buttons -->
+        <div class="btn-row">
+            <button type="submit">Search &amp; Filter</button>
+            <!-- Clear button resets all filters by navigating to the base URL -->
+            <a href="{% url 'products:product_list' %}" class="btn-clear">Clear Filters</a>
+        </div>
+    </form>
+
+    <!-- Results count -->
+    <p class="results-info">
+        Showing {{ total_results }} product{{ total_results|pluralize }} found.
+    </p>
+
+    {% if page_obj %}
+        <!-- Product results table -->
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>SKU</th>
+                    <th>Description</th>
+                    <th>Category</th>
+                    <th>Price</th>
+                    <th>Tags</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for product in page_obj %}
+                    <tr>
+                        <td>{{ product.name }}</td>
+                        <td>{{ product.sku }}</td>
+                        <!--
+                            Truncate long descriptions to 80 chars in the table view.
+                            The truncatechars filter appends "..." if truncated.
+                        -->
+                        <td class="description" title="{{ product.description }}">
+                            {{ product.description|truncatechars:80 }}
+                        </td>
+                        <!--
+                            product.category.name is efficient here because we used
+                            select_related('category') in the view, so no extra query.
+                        -->
+                        <td>{{ product.category.name }}</td>
+                        <td>${{ product.price }}</td>
+                        <td>
+                            <!--
+                                product.tags.all is efficient because we used
+                                prefetch_related('tags') in the view, so tags for
+                                ALL products on this page were fetched in one query.
+                            -->
+                            {% for tag in product.tags.all %}
+                                <span class="tag-badge">{{ tag.name }}</span>
+                            {% empty %}
+                                <span style="color: #aaa;">—</span>
+                            {% endfor %}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <!--
+            Pagination Controls
+            
+            We need to preserve current filter parameters when navigating pages.
+            Each pagination link includes the existing query string with the page
+            number updated. We use a hidden-input approach by building the URL
+            manually with the current GET parameters.
+        -->
+        {% if page_obj.has_other_pages %}
+            <div class="pagination">
+                <!-- Previous page link -->
+                {% if page_obj.has_previous %}
+                    <a href="?page={{ page_obj.previous_page_number }}{% for key, values in request.GET.lists %}{% if key != 'page' %}{% for val in values %}&{{ key }}={{ val }}{% endfor %}{% endif %}{% endfor %}">
+                        &laquo; Prev
+                    </a>
+                {% endif %}
+
+                <!-- Page number links -->
+                {% for num in page_obj.paginator.page_range %}
+                    {% if page_obj.number == num %}
+                        <span class="current">{{ num }}</span>
+                    {% elif num > page_obj.number|add:"-3" and num < page_obj.number|add:"3" %}
+                        <a href="?page={{ num }}{% for key, values in request.GET.lists %}{% if key != 'page' %}{% for val in values %}&{{ key }}={{ val }}{% endfor %}{% endif %}{% endfor %}">
+                            {{ num }}
+                        </a>
+                    {% endif %}
+                {% endfor %}
+
+                <!-- Next page link -->
+                {% if page_obj.has_next %}
+                    <a href="?page={{ page_obj.next_page_number }}{% for key, values in request.GET.lists %}{% if key != 'page' %}{% for val in values %}&{{ key }}={{ val }}{% endfor %}{% endif %}{% endfor %}">
+                        Next &raquo;
+                    </a>
+                {% endif %}
+            </div>
+        {% endif %}
+
+    {% else %}
+        <!-- Empty state when no products match the filters -->
+        <div class="empty-state">
+            <p>No products found matching your criteria.</p>
+            <p>Try adjusting your search or filter settings.</p>
+        </div>
+    {% endif %}
+</body>
+</html>
