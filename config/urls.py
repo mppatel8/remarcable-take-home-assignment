@@ -8,8 +8,11 @@ Routes:
 
 from django.contrib import admin
 from django.urls import include, path
+from django.views.generic import RedirectView
 
 urlpatterns = [
+    # Redirect root to products catalog
+    path("", RedirectView.as_view(url="/products/", permanent=False)),
     # Django admin — used for populating categories, tags, and products
     path("admin/", admin.site.urls),
     # Product catalog — search and filter interface

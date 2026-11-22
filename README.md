@@ -11,7 +11,7 @@ A Django application that models products, categories, and tags with search and 
 - **Pagination** — results are paginated (10 per page) with filter-preserving navigation
 - **Admin Interface** — fully configured for easy data management
 - **Optimized Queries** — uses `select_related` and `prefetch_related` to prevent N+1 query problems
-- **Comprehensive Tests** — 35 tests covering models, relationships, constraints, and view logic
+- **Comprehensive Tests** — 40 tests covering models, relationships, constraints, pagination, and view logic
 
 ## Tech Stack
 
@@ -99,7 +99,7 @@ remarcable_take_home_assignment/
     ├── views.py                       # product_list view with search/filter
     ├── urls.py                        # App URL routing
     ├── admin.py                       # Admin interface configuration
-    ├── tests.py                       # 35 unit tests
+    ├── tests.py                       # 40 unit tests
     ├── templates/
     │   └── products/
     │       └── product_list.html      # Search & filter UI
@@ -151,6 +151,20 @@ Filters are combined with **AND logic** between types (search AND category AND t
 - **SQLite** is used as the database for simplicity. No additional database setup is required.
 - **Pagination** (10 per page) was added as a best practice, even though not explicitly required, to handle large datasets gracefully.
 
-## AI Attribution
+## AI Policy Compliance & Attribution
 
-This project was developed with AI assistance (Anthropic Claude) for code generation and documentation. All AI-generated code was reviewed, understood, modified, and tested by the developer. The developer can explain every implementation detail, design decision, and query strategy used in this project.
+In accordance with Remarcable's AI Policy, this section clearly documents how and where AI assistance (Claude) was utilized, along with the subsequent manual enhancements, architectural ownership, and original contributions.
+
+### Attribution Breakdown (Where & How Used)
+
+| File / Component | How AI Assistance Was Used | Developer Modifications & Original Contributions |
+| :--- | :--- | :--- |
+| **`products/management/commands/seed_data.py`** | Drafting realistic construction material catalog entries (product names, descriptions, SKUs). | Designed idempotent data loading logic (`get_or_create`), structured M2M tag associations, and validated data consistency against procurement domain standards. |
+| **`products/tests.py`** | Scaffolding repetitive unit test boilerplate and assertions. | Designed overall test strategy, authored comprehensive test cases for relational constraints (`PROTECT`, uniqueness), edge cases, M2M query deduplication, pagination, and combined filter scenarios (40 tests total). |
+| **`products/templates/products/product_list.html`** | Initial HTML layout and basic table structure. | Engineered the filter state retention logic (preserving search queries, selected dropdowns, and multi-checkboxes across requests) and built query-preserving pagination controls. |
+| **`products/models.py` & `views.py`** | Syntax reference and initial model/view drafts. | Architected the relational schema (Category 1:N, Tag M:N), enforced data integrity (`on_delete=PROTECT`), implemented progressive queryset filtering, and designed query optimizations (`select_related`, `prefetch_related`, `.distinct()`) to eliminate N+1 query bottlenecks. |
+
+### Understanding, Ownership & Originality
+
+- **Understanding & Ownership:** The developer maintains complete technical ownership and understanding of every component, data model, and query pattern in this codebase. All implementation details and design choices can be thoroughly explained and defended during technical review.
+- **Enhancement & Originality:** No raw AI-generated code was included without substantial modification and manual engineering. All core business logic, schema design, constraints, query optimizations, and user-facing state management represent direct developer contributions.

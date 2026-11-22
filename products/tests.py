@@ -374,3 +374,49 @@ class ProductListViewTests(TestCase):
         """The view uses the correct template."""
         response = self.client.get(self.url)
         self.assertTemplateUsed(response, "products/product_list.html")
+
+    def test_invalid_category_id_handled_gracefully(self):
+        """Non-numeric category parameter does not raise 500 error."""
+        response = self.client.get(self.url, {"category": "invalid_abc"})
+        self.assertEqual(response.status_code, 200)
+
+    def test_invalid_tag_id_handled_gracefully(self):
+        """Non-numeric tag parameters do not raise 500 error."""
+        response = self.client.get(self.url, {"tags": ["invalid_xyz"]})
+        self.assertEqual(response.status_code, 200)
+
+    def test_pagination_multiple_pages(self):
+        """Products are paginated with 10 items per page."""
+        # Create 12 more products to exceed page size of 10 (3 existing + 12 = 15)
+        for i in range(12):
+            Product.objects.create(
+                name=f"Extra Product {i}",
+                description=f"Description for extra product {i}",
+                price=10.00 + i,
+                sku=f"PAG-EXT-{i:03d}",
+                category=self.plumbing,
+            )
+        response_p1 = self.client.get(self.url)
+        self.assertEqual(response_p1.status_code, 200)
+        self.assertEqual(len(response_p1.context["page_obj"]), 10)
+        self.assertTrue(response_p1.context["page_obj"].has_next())
+
+        response_p2 = self.client.get(self.url, {"page": 2})
+        self.assertEqual(response_p2.status_code, 200)
+        self.assertEqual(len(response_p2.context["page_obj"]), 5)
+        self.assertFalse(response_p2.context["page_obj"].has_next())
+
+    def test_pagination_invalid_page_handling(self):
+        """Paginator handles non-integer or out-of-range page numbers gracefully."""
+        # Out-of-range page delivers the last page
+        response_out = self.client.get(self.url, {"page": 999})
+        self.assertEqual(response_out.status_code, 200)
+        # Non-integer page delivers the first page
+        response_nan = self.client.get(self.url, {"page": "not_a_number"})
+        self.assertEqual(response_nan.status_code, 200)
+
+    def test_root_url_redirects_to_products(self):
+        """Root URL '/' redirects to '/products/'."""
+        response = self.client.get("/")
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, "/products/")

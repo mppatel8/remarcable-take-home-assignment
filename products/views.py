@@ -82,14 +82,17 @@ def product_list(request):
         queryset = queryset.filter(description__icontains=search_query)
 
     # Apply category filter (exact match on the foreign key ID)
-    if category_id:
-        queryset = queryset.filter(category_id=category_id)
+    # Validate category_id is numeric to prevent unhandled ValueError on malformed inputs
+    if category_id and category_id.isdigit():
+        queryset = queryset.filter(category_id=int(category_id))
 
     # Apply tag filter with OR logic: product must have AT LEAST ONE
     # of the selected tags. The __in lookup generates a SQL IN clause:
     #   WHERE tag_id IN (3, 7, 10)
-    if selected_tag_ids:
-        queryset = queryset.filter(tags__id__in=selected_tag_ids)
+    # Filter only valid numeric IDs to prevent unhandled ValueError
+    valid_tag_ids = [t for t in selected_tag_ids if t.isdigit()]
+    if valid_tag_ids:
+        queryset = queryset.filter(tags__id__in=valid_tag_ids)
 
     # Remove duplicate rows that result from the M2M JOIN.
     # Without distinct(), a product matching 2 selected tags would appear twice.

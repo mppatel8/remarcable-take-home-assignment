@@ -213,7 +213,7 @@
             <div class="pagination">
                 <!-- Previous page link -->
                 {% if page_obj.has_previous %}
-                    <a href="?page={{ page_obj.previous_page_number }}{% for key, values in request.GET.lists %}{% if key != 'page' %}{% for val in values %}&{{ key }}={{ val }}{% endfor %}{% endif %}{% endfor %}">
+                    <a href="?page={{ page_obj.previous_page_number }}{% for key, values in request.GET.lists %}{% if key != 'page' %}{% for val in values %}&{{ key|urlencode }}={{ val|urlencode }}{% endfor %}{% endif %}{% endfor %}">
                         &laquo; Prev
                     </a>
                 {% endif %}
@@ -223,7 +223,7 @@
                     {% if page_obj.number == num %}
                         <span class="current">{{ num }}</span>
                     {% elif num > page_obj.number|add:"-3" and num < page_obj.number|add:"3" %}
-                        <a href="?page={{ num }}{% for key, values in request.GET.lists %}{% if key != 'page' %}{% for val in values %}&{{ key }}={{ val }}{% endfor %}{% endif %}{% endfor %}">
+                        <a href="?page={{ num }}{% for key, values in request.GET.lists %}{% if key != 'page' %}{% for val in values %}&{{ key|urlencode }}={{ val|urlencode }}{% endfor %}{% endif %}{% endfor %}">
                             {{ num }}
                         </a>
                     {% endif %}
@@ -231,7 +231,7 @@
 
                 <!-- Next page link -->
                 {% if page_obj.has_next %}
-                    <a href="?page={{ page_obj.next_page_number }}{% for key, values in request.GET.lists %}{% if key != 'page' %}{% for val in values %}&{{ key }}={{ val }}{% endfor %}{% endif %}{% endfor %}">
+                    <a href="?page={{ page_obj.next_page_number }}{% for key, values in request.GET.lists %}{% if key != 'page' %}{% for val in values %}&{{ key|urlencode }}={{ val|urlencode }}{% endfor %}{% endif %}{% endfor %}">
                         Next &raquo;
                     </a>
                 {% endif %}
